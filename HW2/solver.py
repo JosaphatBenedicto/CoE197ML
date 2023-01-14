@@ -1,41 +1,33 @@
 import numpy as np
+import pandas as pd
 import random
 import torch
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+import tinygrad.nn.optim as optim
+from tinygrad.tensor import Tensor
 
-def plotter(data, label=['train']):
-    """ Plots data. """
-    
-    for d,l in zip(data, label):
-        x, y = d
-        plt.scatter(x, y, label=l)
-    
-    plt.legend()
-    plt.xlabel('$x$')
-    plt.ylabel('$y$')
-    
-    plt.show()
-    
-def fcn(x, degree, coeffs):
+#Loss function
+def calc_loss(y_pred, y_gt):
     """
-    Given x, solves for y given x and coefficients
+    Calculate the MSE loss
     
     Input/s:
-        x         : ndarray of input data
-        degree    : degree of the best fitting polynomial
-        coeffs    : polynomial coefficients
-        
-    Output/s:
-        y         : output after evaluating function
+        y_pred : predicted y of model
+        y_gt   : ground truth y
     """
-    
-    assert(len(coeffs) == 3)
-    
-    
-    y = coeffs[0] + coeffs[1]*x + coeffs[2]*x**2
-    return y
+    mse = ((y_pred-y_gt)**2).mean()
+    return mse
 
+#Gradient
+
+
+#Function Placeholder
+def fcn(xval, yval, coeffs):
+    return None
+
+
+#Prepare Dataset
 valtrain = open("data_train.csv", "r").read().splitlines()
 del valtrain[0]
 random.shuffle(valtrain)
@@ -68,4 +60,38 @@ for x in valtest[1:]:
     xtest.append(float(vals_test[0]))
     ytest.append(float(vals_test[1]))
 
-    
+xtrain = Tensor(xtrain, requires_grad=False)
+xvalidate = Tensor(xvalidate, requires_grad=False)
+xtest = Tensor(xtest, requires_grad=False)
+ytrain = Tensor(ytrain, requires_grad=False)
+yvalidate = Tensor(yvalidate, requires_grad=False)    
+ytest = Tensor(ytest, requires_grad=False)
+
+
+#Prepare Model
+class Datavalues:
+    def __init__(self, x_val, y_val):
+        self.x_val = x_val
+        self.y_val = y_val
+        
+    def forward(self, x):
+        return x.dot(self.x_val).relu().dot(self.y_val).logsoftmax()
+
+
+model = Datavalues(xtrain,ytrain)
+optim = optim.SGD([model.x_val, model.y_val], lr=0.001)
+
+
+#Parameters
+batch = 4
+lr = 0.0001
+max_epochs = 5000
+deg = []
+coeffs = [] 
+
+
+out = model.forward(xtrain)
+loss = out.mul(ytrain).mean()
+optim.zero_grad()
+loss.backward()
+optim.step()
